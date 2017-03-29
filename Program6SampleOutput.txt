@@ -1,0 +1,74 @@
+Program 6 Sample Output
+
+
+Joshua Steward
+
+
+N: 12
+
+Closest isolated prime: is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime
+is not prime

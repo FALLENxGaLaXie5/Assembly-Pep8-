@@ -1,0 +1,1209 @@
+;Joshua Steward
+;Program 6
+         BR      Main
+N:       .BLOCK 2
+outNum:  .BLOCK 2
+labelN:  .ASCII "N: \x00"
+labelC:  .ASCII "Closest isolated prime: \x00"
+
+Main:    STRO    labelN, d   ;output N:
+         DECI    N, d        ;get N from input
+         LDA     N, d        ;load N into the accumulator
+while1:  BREQ    finish      ;branch to finish if 0
+         CHARO   '\n', i     ;escape character
+         STRO    labelC, d   ;ouput closest prime string
+         LDA     N, d        ;load n into accumulator
+         SUBSP   4, i        ;subtract 4 from the stack pointer for parameter and return
+         STA     0, s        ;store accumulator at top of stack
+         CALL    closest     ;call closest subroutine
+         ADDSP   2, i        ;add 2 to the stack pointer
+         LDA     0, s
+         STA     outNum, d
+         ADDSP   2, i 
+         DECO    outNum, d
+         CHARO   '\n', i
+         STRO    labelN, d
+         DECI    N, d
+         BRNE    while1  
+finish:  STOP
+         
+              
+closest: SUBSP   4, i
+         LDA     0, i
+         STA     2, s
+         
+clLoop:  LDA     6, s        ;loading N from the stack
+         SUBA    2, s        ;subtacting step from N
+         STA     4, s        ;storing in temp
+         LDA     4, s        ;loading temp into the accumulator
+         CPA     0, i        ;compare to 0
+         BRLT    br1         ;branch if temp is less than 0
+brBack:  LDA     4, s        ;loading temp into the accumulator
+         SUBSP   4, i        ;subtract 4 from the stack pointer for the paramter and return
+         STA     0, s        ;store the accumulator at 0 on the stack
+         CALL    issol       ;call issolitaryprime with temp as the parameter 
+         ADDSP   2, i        ;add 2 to the stack pointer
+         LDA     0, s        ;load the accumulator with the return value
+         ADDSP   2, i        ;return stack pointer to original state
+         CPA     1, i        ;compare accumulator to 1
+
+         BREQ    returnz     ; if equal, branch to returnz
+         LDA     6, s        ;if not equal to 1, load N onto the accumulator
+         ADDA    2, s        ;add step onto the accumulator
+         STA     4, s        ;store this value in temp
+         LDA     4, s        ;load temp into the accumulator
+         CPA     32767, i    ;compare to 32767
+         BRGT    subTemp     ;if greater than, branch to subTemp
+lastCall:LDA     4, s        ;load temp into the accumulator
+         SUBSP   4, i        ;sub 4 from the stack pointer for temp as the parameter and the return
+         STA     0, s        ;store the accumulator, currently as temp, into the top of the stack
+         CALL    issol;call issolitaryprime with temp as parameter
+         ADDSP   2, i        ;add 2 to the stack pointer
+         LDA     0, s        ;load the return, which is now at the stack pointer, into the accumulator
+         ADDSP   2, i        ;return stack pointer back to normal
+         CPA     1, i        ;if accumulator is 1
+         BREQ    returnz     ;branch to returnz
+         LDA     2, s        ;if not, load step into the accumulator
+         ADDA    1, i        ;increment accumulator
+         STA     2, s        ;store back into step
+         BR      clLoop      ;branch back to clLoop   
+br1:     LDA     4, s        ;add 32768 to temp
+         ADDA    32768, i 
+         STA     4, s        ;store back in temp
+         BR      brBack      ;branch back
+subTemp: SUBA    32768, i    ;subtract 32768 from temp
+         STA     4, s        ;store back intemp
+         BR      lastCall    ;branch back
+returnz: LDA     4, s        ;load temp into the accumulator
+         STA     8, s        ;store the accumulator at 8 from the stack pointer
+         ret4                ;return to origin spot
+issol:   SUBSP   4, i
+         LDA     6, s
+         SUBA    2, i
+         STA     2, s
+         LDA     6, s
+         ADDA    2, i
+         STA     4, s
+         CPA     32767, i
+         BRGT    rBranch
+rBBack:  LDA     6, s
+         SUBSP   4, i
+         STA     0, s
+         CALL    isprime
+         ADDSP   2, i
+         STA     0, s
+         ADDSP   2, i
+         CPA     1, i
+         BREQ    checkL
+         BR      returnB
+rBranch: SUBA    32768, i
+         STA     4, s
+         BR      rBBack    
+checkL:  LDA     2, s
+         SUBSP   4, i
+         STA     0, s
+         CALL    isprime
+         ADDSP   2, i
+         STA     0, s
+         ADDSP   2, i
+         CPA     0, i
+         BREQ    checkR
+         BR      returnB
+checkR:  LDA     4, s
+         SUBSP   4, i
+         STA     0, s
+         CALL    isprime
+         ADDSP   2, i
+         STA     0, s
+         ADDSP   2, i
+         CPA     0, i
+         BREQ    returnT
+         BR      returnB
+returnT: LDA     1, i
+         STA     8, s
+         ret4
+returnB: LDA     0, i
+         STA     8, s
+         ret4
+isprime: SUBSP   2, i
+top:     LDA     4, s
+         CPA     0, i
+         BREQ    done
+         BRV     badin
+         BRLT    top
+         lda 4,s
+          cpa 1,i       
+          breq top      ; 1 is ignored
+          cpa 2,i
+          breq prime    ; 2 is prime
+          anda 1,i
+          breq notprime ; even number is not prime
+          lda 4,s
+          suba 3,i
+          asra
+          sta 2, s       ; K=(N-3)/2 = bit position to test
+          ldx 2, s
+          asrx
+          asrx
+          asrx
+          asrx           ; K/16 is number of word containing bit of interest
+          aslx           ; byte offset of this word
+          lda primemap,x ; get the word of interest
+          ldx 2, s        ; bit number again
+          andx 15,i      ; bit within word
+          aslx           ; byte offset for bitmask table
+          anda bitmask,x ; zero out all other bits
+          breq notprime  ; if bit of interest is zero, N is not prime
+prime:    stro isprime1,d
+          br top
+notprime: stro noprime,d
+          br top
+badin:    stro badinput,d
+          br top
+done:     ret2
+badinput: .ascii "overflow on input\n\x00"
+noprime:  .ascii "is not prime\n\x00"
+isprime1: .ascii "is prime\n\x00"; 
+bitmask: .word 0x8000
+	 .word 0x4000
+	 .word 0x2000
+	 .word 0x1000
+	 .word 0x0800
+	 .word 0x0400
+	 .word 0x0200
+	 .word 0x0100
+	 .word 0x0080
+	 .word 0x0040
+	 .word 0x0020
+	 .word 0x0010
+	 .word 0x0008
+	 .word 0x0004
+	 .word 0x0002
+	 .word 0x0001
+primemap: .block 0     ; so we can just cut and paste next lines
+.word 0xeda6
+.word 0x5a4c
+.word 0xb291
+.word 0x6d02
+.word 0x9864
+.word 0xa4c3
+.word 0x6082
+.word 0xd309
+.word 0x2658
+.word 0x40b4
+.word 0x090d
+.word 0x224a
+.word 0x4510
+.word 0xc329
+.word 0x1682
+.word 0x28a4
+.word 0x1804
+.word 0x8499
+.word 0x0932
+.word 0x5821
+.word 0xa4c1
+.word 0x4884
+.word 0x4224
+.word 0xa251
+.word 0x4084
+.word 0x186c
+.word 0x205a
+.word 0x05a0
+.word 0x0a21
+.word 0x1490
+.word 0x2922
+.word 0x414c
+.word 0x3218
+.word 0x6402
+.word 0xd244
+.word 0x9003
+.word 0x0884
+.word 0x9105
+.word 0x2641
+.word 0x0806
+.word 0x9968
+.word 0x3200
+.word 0x0124
+.word 0x4021
+.word 0x02d2
+.word 0x2c82
+.word 0x1b48
+.word 0x2088
+.word 0x2522
+.word 0x8a05
+.word 0x34c8
+.word 0x4012
+.word 0xc005
+.word 0x8418
+.word 0x4492
+.word 0x012c
+.word 0x1082
+.word 0x2020
+.word 0x4b61
+.word 0x0490
+.word 0x0c06
+.word 0x0048
+.word 0x9689
+.word 0x0c20
+.word 0x4241
+.word 0xb083
+.word 0x0196
+.word 0x1100
+.word 0x800a
+.word 0x4406
+.word 0x880d
+.word 0x1250
+.word 0x6004
+.word 0xca40
+.word 0x9652
+.word 0x0920
+.word 0x5208
+.word 0x9400
+.word 0x2010
+.word 0x8a64
+.word 0x0083
+.word 0x0114
+.word 0x1021
+.word 0xa24b
+.word 0x48b2
+.word 0x1845
+.word 0x0210
+.word 0x6580
+.word 0x8148
+.word 0x9402
+.word 0x2124
+.word 0x4208
+.word 0x1498
+.word 0x0030
+.word 0x8a05
+.word 0x1048
+.word 0x2900
+.word 0x4301
+.word 0x000b
+.word 0x04a0
+.word 0x9144
+.word 0x00d8
+.word 0x2000
+.word 0xc929
+.word 0x8283
+.word 0x0c06
+.word 0x0240
+.word 0x1011
+.word 0x6c00
+.word 0x8824
+.word 0x34c8
+.word 0x6086
+.word 0x1025
+.word 0x2248
+.word 0x0834
+.word 0x0944
+.word 0x2248
+.word 0x0130
+.word 0x8148
+.word 0x0610
+.word 0x2c20
+.word 0x5100
+.word 0xa698
+.word 0x2802
+.word 0x0041
+.word 0xa4c8
+.word 0x0190
+.word 0x120c
+.word 0x8203
+.word 0x4816
+.word 0x0100
+.word 0x1098
+.word 0x6184
+.word 0xc309
+.word 0x1000
+.word 0x2184
+.word 0x4840
+.word 0x2410
+.word 0x6012
+.word 0x9201
+.word 0x8409
+.word 0x6800
+.word 0xc120
+.word 0x2248
+.word 0x0406
+.word 0x9921
+.word 0x2082
+.word 0x0194
+.word 0x0220
+.word 0x02d3
+.word 0x0502
+.word 0x0004
+.word 0x2410
+.word 0x2420
+.word 0xd224
+.word 0x3409
+.word 0x2986
+.word 0x0208
+.word 0x8052
+.word 0x0c92
+.word 0x0009
+.word 0x0288
+.word 0x4410
+.word 0x0b40
+.word 0x0413
+.word 0x0124
+.word 0x0840
+.word 0xa000
+.word 0x4922
+.word 0x5825
+.word 0x9002
+.word 0x6806
+.word 0x8328
+.word 0x0049
+.word 0x4420
+.word 0x0020
+.word 0x32d8
+.word 0x4094
+.word 0x4240
+.word 0x1640
+.word 0x00a2
+.word 0x1244
+.word 0x8299
+.word 0x4c30
+.word 0x1200
+.word 0xa081
+.word 0x0004
+.word 0x8028
+.word 0x044a
+.word 0x4092
+.word 0x1841
+.word 0x10c2
+.word 0x2084
+.word 0x0068
+.word 0x9440
+.word 0x2126
+.word 0x420c
+.word 0x2491
+.word 0x2132
+.word 0x4844
+.word 0x0048
+.word 0x0180
+.word 0x5108
+.word 0x0011
+.word 0x00b0
+.word 0x9940
+.word 0x2208
+.word 0x0404
+.word 0xc121
+.word 0x8642
+.word 0x0500
+.word 0x180c
+.word 0x3080
+.word 0x2d10
+.word 0x1260
+.word 0x808a
+.word 0x4000
+.word 0xc329
+.word 0x2250
+.word 0x4882
+.word 0x8104
+.word 0x2002
+.word 0x4130
+.word 0x0220
+.word 0x1090
+.word 0x2c84
+.word 0x4a40
+.word 0x0081
+.word 0x0c10
+.word 0xc060
+.word 0x1001
+.word 0x0090
+.word 0x1009
+.word 0x8053
+.word 0x0884
+.word 0x914c
+.word 0x3052
+.word 0x60a0
+.word 0x4029
+.word 0x0051
+.word 0x28a0
+.word 0x4a04
+.word 0x1600
+.word 0x0500
+.word 0x1241
+.word 0x0409
+.word 0x6804
+.word 0x8225
+.word 0x0608
+.word 0x0010
+.word 0x1900
+.word 0x2048
+.word 0x4134
+.word 0x4248
+.word 0x0081
+.word 0x2882
+.word 0x010c
+.word 0x3480
+.word 0x2502
+.word 0xd024
+.word 0x1001
+.word 0x0910
+.word 0xc000
+.word 0xa60a
+.word 0x0480
+.word 0x0041
+.word 0x121a
+.word 0x0084
+.word 0x4061
+.word 0x02c1
+.word 0x2024
+.word 0x5148
+.word 0x9209
+.word 0x4910
+.word 0x0a00
+.word 0xa0c2
+.word 0x6106
+.word 0x8024
+.word 0x0009
+.word 0x4420
+.word 0x9800
+.word 0x32c0
+.word 0x4190
+.word 0x8800
+.word 0x8240
+.word 0x2502
+.word 0x5044
+.word 0x8290
+.word 0x4830
+.word 0x1005
+.word 0x8402
+.word 0x2816
+.word 0x4009
+.word 0x0248
+.word 0x4c36
+.word 0x0069
+.word 0x2090
+.word 0x2104
+.word 0x8a00
+.word 0x0081
+.word 0x04a6
+.word 0x0904
+.word 0x0611
+.word 0x0030
+.word 0x4a40
+.word 0x304a
+.word 0x0890
+.word 0x5209
+.word 0x820a
+.word 0x0480
+.word 0x9844
+.word 0x0240
+.word 0x0030
+.word 0x0060
+.word 0x04c2
+.word 0x0ca2
+.word 0x004c
+.word 0x2291
+.word 0x4100
+.word 0x8200
+.word 0xa48b
+.word 0x0106
+.word 0x110d
+.word 0x2041
+.word 0x0022
+.word 0x000d
+.word 0x005a
+.word 0x0420
+.word 0xc101
+.word 0x8002
+.word 0x2004
+.word 0x5240
+.word 0xa209
+.word 0x2802
+.word 0x8060
+.word 0x9481
+.word 0x0084
+.word 0x4200
+.word 0x0242
+.word 0x4c80
+.word 0x9824
+.word 0x0018
+.word 0x4404
+.word 0x8908
+.word 0x0080
+.word 0x2186
+.word 0x0a40
+.word 0x1608
+.word 0x0430
+.word 0xd004
+.word 0x0400
+.word 0x2894
+.word 0x1220
+.word 0x8251
+.word 0x0030
+.word 0x1021
+.word 0x2082
+.word 0x04a0
+.word 0x0a09
+.word 0x9202
+.word 0x2006
+.word 0x0008
+.word 0x9401
+.word 0x4100
+.word 0x1005
+.word 0x10c0
+.word 0x6082
+.word 0x0001
+.word 0xa412
+.word 0x44b2
+.word 0x0028
+.word 0x0212
+.word 0x40a4
+.word 0xc121
+.word 0x8480
+.word 0x2800
+.word 0x5900
+.word 0x3001
+.word 0x4d20
+.word 0x0245
+.word 0x8000
+.word 0x4880
+.word 0x830c
+.word 0x2451
+.word 0x0400
+.word 0x9028
+.word 0x0058
+.word 0x2114
+.word 0x4140
+.word 0x9012
+.word 0x2922
+.word 0x420c
+.word 0x9011
+.word 0x2410
+.word 0xc805
+.word 0x2482
+.word 0x0112
+.word 0x1100
+.word 0xa048
+.word 0x0422
+.word 0x1064
+.word 0x1040
+.word 0x0014
+.word 0x8a68
+.word 0x0412
+.word 0x24a0
+.word 0x1b00
+.word 0x1490
+.word 0x2000
+.word 0x4a41
+.word 0x200a
+.word 0x2892
+.word 0x8001
+.word 0x8411
+.word 0x0880
+.word 0x0905
+.word 0x0298
+.word 0x0020
+.word 0x4060
+.word 0x9401
+.word 0x0924
+.word 0x4208
+.word 0x1081
+.word 0x0102
+.word 0x1024
+.word 0x0489
+.word 0x0100
+.word 0x432d
+.word 0x0619
+.word 0x0026
+.word 0x8044
+.word 0x2200
+.word 0x6100
+.word 0x8168
+.word 0x0691
+.word 0x0c00
+.word 0x0a00
+.word 0x0618
+.word 0x0500
+.word 0x9021
+.word 0xa008
+.word 0x0002
+.word 0x5205
+.word 0x0042
+.word 0x0400
+.word 0x9800
+.word 0x1042
+.word 0x01a0
+.word 0x4801
+.word 0x00c1
+.word 0x28a2
+.word 0x4304
+.word 0x0210
+.word 0x2020
+.word 0x5265
+.word 0x8003
+.word 0x0004
+.word 0xd205
+.word 0x0408
+.word 0x0814
+.word 0x8949
+.word 0x228a
+.word 0x0404
+.word 0x4a08
+.word 0x80c2
+.word 0x2900
+.word 0x0908
+.word 0xa410
+.word 0x2000
+.word 0x5020
+.word 0x0441
+.word 0x4884
+.word 0x8109
+.word 0x8410
+.word 0x4092
+.word 0x0109
+.word 0x100a
+.word 0x6430
+.word 0x8921
+.word 0x8043
+.word 0x0522
+.word 0x1040
+.word 0x8288
+.word 0x4900
+.word 0x5020
+.word 0x2042
+.word 0x2106
+.word 0x0120
+.word 0x841b
+.word 0x04a2
+.word 0x8000
+.word 0x02d8
+.word 0x4124
+.word 0x0a49
+.word 0x1200
+.word 0x0080
+.word 0x5304
+.word 0x9281
+.word 0x0020
+.word 0xc021
+.word 0x2001
+.word 0x0016
+.word 0xd029
+.word 0x2202
+.word 0x0c00
+.word 0x002d
+.word 0x0012
+.word 0x6014
+.word 0x0900
+.word 0x0402
+.word 0x0484
+.word 0x1904
+.word 0x0009
+.word 0x4902
+.word 0xc005
+.word 0x2400
+.word 0x2100
+.word 0x9124
+.word 0x000a
+.word 0x0830
+.word 0x1941
+.word 0x00ca
+.word 0x0010
+.word 0x4828
+.word 0x0080
+.word 0x0826
+.word 0x0800
+.word 0x2290
+.word 0x6012
+.word 0x9200
+.word 0x80c9
+.word 0x0084
+.word 0xd124
+.word 0x0040
+.word 0x4884
+.word 0x8100
+.word 0x2202
+.word 0x60b0
+.word 0x0220
+.word 0x1000
+.word 0x0c80
+.word 0x5244
+.word 0x2201
+.word 0x2d10
+.word 0x1820
+.word 0x900a
+.word 0x4990
+.word 0x4200
+.word 0x8201
+.word 0x4c06
+.word 0x1028
+.word 0x0018
+.word 0x4180
+.word 0x0901
+.word 0x10c1
+.word 0x0026
+.word 0x0200
+.word 0x8608
+.word 0x2010
+.word 0x8261
+.word 0x9080
+.word 0x6094
+.word 0xc004
+.word 0x001b
+.word 0x0c04
+.word 0x1100
+.word 0x32c2
+.word 0x4010
+.word 0x4220
+.word 0x9250
+.word 0x0d04
+.word 0x0304
+.word 0xb010
+.word 0x4102
+.word 0x8805
+.word 0x0409
+.word 0x2894
+.word 0x0104
+.word 0x2058
+.word 0x0c10
+.word 0x0029
+.word 0x0010
+.word 0x0400
+.word 0x4220
+.word 0x8412
+.word 0x0824
+.word 0x4040
+.word 0x9480
+.word 0x0020
+.word 0x0840
+.word 0x0083
+.word 0x6000
+.word 0x8204
+.word 0x8011
+.word 0x4024
+.word 0x0805
+.word 0x3200
+.word 0x0100
+.word 0xc048
+.word 0x0600
+.word 0x2c82
+.word 0x4108
+.word 0x9010
+.word 0x4420
+.word 0x4000
+.word 0x04ca
+.word 0x0816
+.word 0xd121
+.word 0x2649
+.word 0x0480
+.word 0x0861
+.word 0x2092
+.word 0x0490
+.word 0x0000
+.word 0x0401
+.word 0x2184
+.word 0x4208
+.word 0x3281
+.word 0x0110
+.word 0x4801
+.word 0x8448
+.word 0x0180
+.word 0x1221
+.word 0x0418
+.word 0x4834
+.word 0x0864
+.word 0x0282
+.word 0x2010
+.word 0x4949
+.word 0x02c1
+.word 0x0520
+.word 0x1008
+.word 0x3010
+.word 0x4402
+.word 0x1000
+.word 0xa449
+.word 0x6100
+.word 0x5228
+.word 0x0218
+.word 0x0006
+.word 0x800c
+.word 0x1042
+.word 0x6080
+.word 0x0120
+.word 0x8083
+.word 0x0020
+.word 0x1040
+.word 0x8608
+.word 0x2d20
+.word 0xc040
+.word 0x3000
+.word 0x0110
+.word 0x1221
+.word 0xa011
+.word 0x0882
+.word 0x8060
+.word 0x10da
+.word 0x2000
+.word 0xc801
+.word 0x0481
+.word 0x00a4
+.word 0x4908
+.word 0xb008
+.word 0x4802
+.word 0x0044
+.word 0x8001
+.word 0x6804
+.word 0x8001
+.word 0xa252
+.word 0x0810
+.word 0x0008
+.word 0x12ca
+.word 0x0590
+.word 0x0069
+.word 0x10c3
+.word 0x0d00
+.word 0x0304
+.word 0x1080
+.word 0x4102
+.word 0x1824
+.word 0x2408
+.word 0x2814
+.word 0x0308
+.word 0xa210
+.word 0x4020
+.word 0x1120
+.word 0x1010
+.word 0x2484
+.word 0x0a60
+.word 0x8292
+.word 0x0c06
+.word 0x0940
+.word 0x9608
+.word 0x0500
+.word 0x0040
+.word 0x2083
+.word 0x6882
+.word 0x8000
+.word 0x2403
+.word 0x0424
+.word 0x1001
+.word 0x1240
+.word 0x4180
+.word 0x4200
+.word 0x8640
+.word 0x2c00
+.word 0x004c
+.word 0x0688
+.word 0x0420
+.word 0x9845
+.word 0x20c2
+.word 0x0112
+.word 0x8029
+.word 0x0000
+.word 0x4c24
+.word 0x0048
+.word 0x1012
+.word 0x0184
+.word 0x0108
+.word 0x94c3
+.word 0x05a2
+.word 0x1208
+.word 0x0408
+.word 0x2022
+.word 0x4045
+.word 0x9008
+.word 0x0080
+.word 0x420d
+.word 0x0212
+.word 0x4804
+.word 0x1800
+.word 0x2010
+.word 0x2020
+.word 0x8100
+.word 0x1040
+.word 0x0984
+.word 0x5a04
+.word 0x1290
+.word 0x2d00
+.word 0x0264
+.word 0x3000
+.word 0x2006
+.word 0x9124
+.word 0x0410
+.word 0x48b0
+.word 0x0105
+.word 0x2248
+.word 0x6410
+.word 0x0040
+.word 0x9411
+.word 0x20a4
+.word 0x0904
+.word 0x2489
+.word 0x2d10
+.word 0x5020
+.word 0x10c0
+.word 0x4802
+.word 0x4228
+.word 0x0010
+.word 0x0004
+.word 0x1100
+.word 0x20c8
+.word 0x2024
+.word 0xc028
+.word 0x0051
+.word 0x0084
+.word 0x4240
+.word 0xa008
+.word 0x0100
+.word 0x8220
+.word 0x0082
+.word 0x4890
+.word 0x4004
+.word 0x040a
+.word 0x0412
+.word 0x1040
+.word 0x1288
+.word 0x0410
+.word 0x0868
+.word 0x0210
+.word 0x2984
+.word 0x0040
+.word 0x3401
+.word 0x0102
+.word 0x1025
+.word 0x2009
+.word 0x0982
+.word 0x4000
+.word 0x844a
+.word 0x4400
+.word 0x006c
+.word 0x100a
+.word 0x4424
+.word 0x0201
+.word 0x8202
+.word 0x2526
+.word 0x0000
+.word 0x0081
+.word 0x4010
+.word 0x1a41
+.word 0x9041
+.word 0x2810
+.word 0x9204
+.word 0x2040
+.word 0x4482
+.word 0x8801
+.word 0x3008
+.word 0x0130
+.word 0x0901
+.word 0x0212
+.word 0x0ca2
+.word 0x0104
+.word 0x0681
+.word 0x4410
+.word 0x4000
+.word 0x808b
+.word 0x2004
+.word 0x1109
+.word 0x2409
+.word 0x0084
+.word 0x1868
+.word 0x0050
+.word 0x4500
+.word 0x8840
+.word 0x8092
+.word 0x2122
+.word 0x4108
+.word 0x0211
+.word 0x4100
+.word 0x0805
+.word 0x0402
+.word 0x4000
+.word 0x9120
+.word 0x041a
+.word 0x4c34
+.word 0x9900
+.word 0x2012
+.word 0x0104
+.word 0x4121
+.word 0x0603
+.word 0x0c20
+.word 0x1200
+.word 0xb200
+.word 0x4900
+.word 0x9020
+.word 0x80c9
+.word 0x4082
+.word 0xc020
+.word 0x2000
+.word 0x0824
+.word 0x0800
+.word 0x3048
+.word 0x2580
+.word 0x8001
+.word 0x1001
+.word 0x2000
+.word 0x4300
+.word 0xa411
+.word 0x0032
+.word 0x0040
+.word 0x30c2
+.word 0x0006
+.word 0x0009
+.word 0x0202
+.word 0x4010
+.word 0x1940
+.word 0x005a
+.word 0x60a4
+.word 0x8329
+.word 0x1280
+.word 0x2800
+.word 0x0844
+.word 0x0600
+.word 0x6912
+.word 0x0205
+.word 0x008a
+.word 0x0090
+.word 0x4121
+.word 0x8608
+.word 0x0020
+.word 0x8060
+.word 0x1088
+.word 0x4000
+.word 0x0069
+.word 0x10c2
+.word 0x0006
+.word 0x0000
+.word 0x9098
+.word 0x0522
+.word 0x0204
+.word 0x0481
+.word 0x4014
+.word 0xc20c
+.word 0x824a
+.word 0x0ca0
+.word 0x9164
+.word 0x0212
+.word 0x2090
+.word 0x0320
+.word 0x8050
+.word 0x2500
+.word 0x4808
+.word 0xa200
+.word 0x4412
+.word 0x4041
+.word 0x0080
+.word 0x0116
+.word 0x9000
+.word 0xa040
+.word 0x0400
+.word 0x9909
+.word 0x0248
+.word 0x2130
+.word 0x4208
+.word 0x8040
+.word 0x2122
+.word 0x0248
+.word 0x8080
+.word 0x2c30
+.word 0x8244
+.word 0x8401
+.word 0x0804
+.word 0x0029
+.word 0x0003
+.word 0x4482
+.word 0x0805
+.word 0x1002
+.word 0x6080
+.word 0x0048
+.word 0x0413
+.word 0x0004
+.word 0x0808
+.word 0x1408
+.word 0x2930
+.word 0x0005
+.word 0x2008
+.word 0x2002
+.word 0x400c
+.word 0x0402
+.word 0x0820
+.word 0x1925
+.word 0x2058
+.word 0x0110
+.word 0x4848
+.word 0x8201
+.word 0x0486
+.word 0x0040
+.word 0x9280
+.word 0x4802
+.word 0x0060
+.word 0x800a
+.word 0x0100
+.word 0xc00d
+.word 0x0441
+.word 0x0816
+.word 0x0101
+.word 0x0000
+.word 0x2490
+.word 0x4241
+.word 0x1290
+.word 0x2000
+.word 0x4844
+.word 0x0091
+.word 0x0430
+.word 0xc861
+.word 0x0402
+.word 0x0094
+.word 0x4009
+.word 0x2000
+.word 0x4812
+.word 0x0824
+.word 0x3080
+.word 0x0180
+.word 0x8b20
+.word 0x1650
+.word 0x00a2
+.word 0x4348
+.word 0xa400
+.word 0x0832
+.word 0x5004
+.word 0x008b
+.word 0x4000
+.word 0x0000
+.word 0x0451
+.word 0x0034
+.word 0x0868
+.word 0x0242
+.word 0x0120
+.word 0x0809
+.word 0x1280
+.word 0x2080
+.word 0x1b04
+.word 0x2018
+.word 0x0120
+.word 0x1000
+.word 0x3081
+.word 0x0880
+.word 0x8000
+.word 0x0048
+.word 0x4420
+.word 0x900c
+.word 0x009a
+.word 0x4490
+.word 0x8060
+.word 0x0602
+.word 0x0426
+.word 0x0840
+.word 0x1409
+.word 0x4000
+.word 0x1a41
+.word 0xa041
+.word 0x2994
+.word 0x010c
+.word 0x2418
+.word 0x0082
+.word 0x0928
+.word 0x00d0
+.word 0x0194
+.word 0x8809
+.word 0x8410
+.word 0x2400
+.word 0x0240
+.word 0x9600
+.word 0x0400
+.end
+         .END      

@@ -1,0 +1,160 @@
+Comp162 - HW#5
+
+Joshua Steward
+
+
+1.)
+
+         BR      Main
+rain:    .BLOCK 256
+currTot: .BLOCK 2
+currAve: .BLOCK 2
+currEx:  .BLOCK 2
+phrase:  .ASCII "Current number: \x00"
+average: .ASCII  "Average is: \x00"
+out:     .ASCII  "Number of days in which rainfall exceeds the average: "
+
+Main:    LDX     0, i
+         LDA     0, i
+         STA     currEx, d
+record:  CPX     256, i 
+         BRGE    ave
+         DECI    rain, x
+         ADDX    2, i
+         BR      record    
+ave:     LDX     0, i
+ave1:    CPX     256, i
+         BRGE    calcAve
+         LDA     currTot, d
+         ADDA    rain, x
+         STA     currTot, d
+         ADDX    2, i
+         BR      ave1
+calcAve: LDA     currTot, d
+         ASRA    
+         ASRA
+         ASRA    
+         ASRA
+         ASRA
+         ASRA
+         ASRA
+         STA     currAve, d
+         LDX     0, i
+         STRO    average, d
+         DECO    currAve, d
+         CHARO   '\n', i
+iterate: CPX     256, i
+         BRGE    done
+         LDA     currAve, d
+         CPA     rain, x
+         BRLE    addTo
+         ADDX    2, i
+         BR      iterate
+addTo:   LDA     currEx, d
+         ADDA    1, i
+         STA     currEx, d
+         ADDX    2, i
+         BR      iterate
+done:    STRO    out, d
+         DECO    currEx, d
+         .END
+         STOP
+
+
+2.)
+
+a)
+
+get:     SUBSP   2, i
+         LDX     4, s
+         SUBX    1, i
+         ASLX
+         LDX     B, x
+         ADDX    6, s
+         ADDX    6, s
+         SUBX    4, i
+         LDA     0, x
+         STA     8, s
+         RET0
+
+b)
+
+put:     LDX     2, s
+         SUBX    1, i
+         ASLX
+         LDX     B, x
+         ADDX    4, s
+         ADDX    4, s
+         SUBX    4, i
+         LDA     6, s
+         STA     B, x
+         RET0
+
+
+
+
+
+3.)
+
+BININ:   STA     -2, s       ;save register A
+         STX     -4, s       ;save register X
+         LDA     32768, i    ; start bit add at 32768 - will be shifted right every iteration
+         STA     2, s
+         LDA     0, i        ;clearing register A
+         STA     4, s        
+         LDX     0, i        ;clearing register X
+BININ1:  CPX     16, i       ;compare to 16 - if more, finished reading in
+         BRGE    done
+         DECI    6, s        ;input 0 or 1
+         LDA     6, s        ;load into accumulator
+         CPA     1, i        ;if 1, go to ones branch
+         BREQ    ones
+         BR      zeros       ;otherwise, branch to zeros
+ones:    LDA     4, s        ; for ones, load the total decimal number so far
+         ADDA    2, s        ; add the current iterative binary value
+         STA     4, s        ;store in stack
+         LDA     2, s        ;shift binary number
+         ASRA
+         STA     2, s
+         ADDX    1, i
+         BR      BININ1
+zeros:   LDA     2, s        ;don't change for zeros - just shift right for next value
+         ASRA
+         STA     2, s
+         ADDX    1, i
+         BR      BININ1
+done:    LDA     4, s
+         STA     8, s
+         LDA     -2, s       ;restoring register A
+         LDX     -4, s       ;restoring register X
+         RET0
+
+
+
+4.)
+
+a)
+
+
+void	q4(int A[])
+	{
+		int i = 15;
+		while(i >=0)
+			{
+				while(A[i] == 0)
+					{
+						if(i >=2)
+							{
+								while(i>0)
+								{
+								A[i] = 1 - A[i];
+								i--;
+								}
+							}	
+					}			
+			}
+	}
+
+
+
+b)	It negates the signed version of that binary number.
